@@ -20,4 +20,4 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 if not TOKEN:
     print("ERREUR : le token est vide ou introuvable.")
 else:
-    bot.run(TOKEN)
+    bot.run(os.getenv("DISCORD_BOT_TOKEN"))
