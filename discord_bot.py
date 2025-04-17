@@ -21,3 +21,12 @@ if not TOKEN:
     print("ERREUR : le token est vide ou introuvable.")
 else:
     bot.run(os.getenv("DISCORD_BOT_TOKEN"))
+@bot.command()
+async def escrow(ctx, montant: float, acheteur: discord.Member, vendeur: discord.Member):
+    await ctx.send(
+        f"Nouvelle transaction escrow :\n"
+        f"Montant : {montant} USDT\n"
+        f"Acheteur : {acheteur.mention}\n"
+        f"Vendeur : {vendeur.mention}\n"
+        f"En attente de paiement..."
+    )
