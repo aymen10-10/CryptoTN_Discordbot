@@ -59,5 +59,4 @@ class TransactionModal(Modal, title="Détails de la transaction"):
 async def start(ctx):
     await ctx.send("Choisissez votre rôle :", view=RoleSelectionView())
 
-TOKEN = os.getenv("DISCORD_TOKEN")
-bot.run(TOKEN)
+bot.run(os.getenv("DISCORD_BOT_TOKEN"))
