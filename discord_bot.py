@@ -17,99 +17,40 @@ async def on_ready():
 async def test(ctx):
     await ctx.send("Le bot Discord fonctionne !")
 
+from discord.ui import View, Button
+
+class EscrowView(View):
+    def __init__(self, montant, acheteur, vendeur):
+        super().__init__(timeout=None)
+        self.montant = montant
+        self.acheteur = acheteur
+        self.vendeur = vendeur
+        self.status = "en attente"
+
+    @discord.ui.button(label="Bloquer les fonds", style=discord.ButtonStyle.primary)
+    async def lock_button(self, interaction: discord.Interaction, button: Button):
+        if interaction.user != self.vendeur:
+            await interaction.response.send_message("Seul le vendeur peut bloquer les fonds.", ephemeral=True)
+            return
+        self.status = "bloqué"
+        await interaction.response.send_message(f"Fonds simulés comme bloqués ({self.montant} USDT). En attente de confirmation de l'acheteur...")
+
+    @discord.ui.button(label="Confirmer la transaction", style=discord.ButtonStyle.success)
+    async def confirm_button(self, interaction: discord.Interaction, button: Button):
+        if interaction.user != self.acheteur:
+            await interaction.response.send_message("Seul l'acheteur peut confirmer la transaction.", ephemeral=True)
+            return
+        if self.status != "bloqué":
+            await interaction.response.send_message("Les fonds ne sont pas encore bloqués.", ephemeral=True)
+            return
+        self.status = "confirmé"
+        await interaction.response.send_message("Transaction confirmée. USDT libérés au vendeur !")
+
 @bot.command()
 async def escrow(ctx, montant: float, acheteur: discord.Member, vendeur: discord.Member):
-    if montant > 5000:
-        await ctx.send("Montant maximum autorisé : 5000 USDT.")
-        return
-
-    # Calcul des commissions
-    if montant < 10:
-        com_acheteur = 1
-        com_vendeur = 1
-    elif 10 <= montant <= 100:
-        com_acheteur = 2
-        com_vendeur = 2
-    elif 100 < montant <= 500:
-        com_acheteur = 3
-        com_vendeur = 3
-    else:
-        com_acheteur = round(montant * 0.005, 2)
-        com_vendeur = round(montant * 0.005, 2)
-
-    transaction_id = len(transactions) + 1
-    transactions[transaction_id] = {
-        "acheteur": acheteur.id,
-        "vendeur": vendeur.id,
-        "montant": montant,
-        "com_acheteur": com_acheteur,
-        "com_vendeur": com_vendeur,
-        "status": "en attente"
-    }
-
+    view = EscrowView(montant, acheteur, vendeur)
     await ctx.send(
-        f"**Transaction #{transaction_id}** créée :\n"
-        f"Acheteur : {acheteur.mention} | Vendeur : {vendeur.mention}\n"
-        f"Montant : `{montant} USDT`\n"
-        f"Commission Acheteur : `{com_acheteur} USDT` | Commission Vendeur : `{com_vendeur} USDT`\n"
-        f"Statut : `En attente de paiement`\n\n"
-        f"{vendeur.mention} peut utiliser `!lock {transaction_id}` pour bloquer les fonds."
+        f"**Transaction interactive**\nMontant : `{montant} USDT`\nAcheteur : {acheteur.mention}\nVendeur : {vendeur.mention}",
+        view=view
     )
-
-@bot.command()
-async def lock(ctx, transaction_id: int):
-    if transaction_id not in transactions:
-        await ctx.send("ID de transaction invalide.")
-        return
-
-    tx = transactions[transaction_id]
-    if ctx.author.id != tx["vendeur"]:
-        await ctx.send("Seul le vendeur peut bloquer les fonds.")
-        return
-
-    if tx["status"] != "en attente":
-        await ctx.send("Cette transaction n'est pas en attente.")
-        return
-
-    tx["status"] = "bloqué"
-    await ctx.send(f"Fonds simulés comme bloqués pour la transaction #{transaction_id}. En attente de confirmation de l'acheteur avec `!confirm {transaction_id}`.")
-
-@bot.command()
-async def confirm(ctx, transaction_id: int):
-    if transaction_id not in transactions:
-        await ctx.send("ID de transaction invalide.")
-        return
-
-    tx = transactions[transaction_id]
-    if ctx.author.id != tx["acheteur"]:
-        await ctx.send("Seul l'acheteur peut confirmer la transaction.")
-        return
-
-    if tx["status"] != "bloqué":
-        await ctx.send("Les fonds ne sont pas encore bloqués.")
-
-    tx["status"] = "confirmé"
-    await ctx.send(
-        f"Transaction #{transaction_id} confirmée.\n"
-        f"USDT libérés au vendeur après déduction des commissions."
-    )
-
-@bot.command()
-async def cancel(ctx, transaction_id: int):
-    if transaction_id not in transactions:
-        await ctx.send("ID de transaction invalide.")
-        return
-
-    tx = transactions[transaction_id]
-    if ctx.author.id not in [tx["acheteur"], tx["vendeur"]]:
-        await ctx.send("Seul l'acheteur ou le vendeur peut annuler cette transaction.")
-        return
-
-    if tx["status"] == "confirmé":
-        await ctx.send("Transaction déjà confirmée. Trop tard pour annuler.")
-        return
-
-    tx["status"] = "annulée"
-    await ctx.send(f"Transaction #{transaction_id} annulée avec succès.")
-
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
