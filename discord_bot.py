@@ -1,5 +1,8 @@
-import discord from discord.ext import commands, tasks from discord.ui import View, Button, Select, Modal, TextInput import asyncio import os
-
+import discord
+from discord.ext import commands, tasks
+from discord.ui import View, Button, Select, Modal, TextInput
+import asyncio
+import os
 intents = discord.Intents.default() intents.message_content = True bot = commands.Bot(command_prefix="!", intents=intents)
 
 pending_transactions = {}
