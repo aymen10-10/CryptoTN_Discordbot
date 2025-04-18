@@ -1,62 +1,54 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, Button, Modal, TextInput
-import asyncio
+from discord.ui import View, Button
 import os
 
-intents = discord.Intents.default()
-intents.message_content = True
-
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-class RoleSelectionView(View):
+# Mémoire temporaire
+notes = {}
+
+# Affichage des 4 dispositions
+class DispositionView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(RoleButton("Acheteur", "buyer"))
-        self.add_item(RoleButton("Vendeur", "seller"))
+        self.add_item(DispositionButton("USDT (TRC20)"))
+        self.add_item(DispositionButton("RedotPay"))
+        self.add_item(DispositionButton("Neteller"))
+        self.add_item(DispositionButton("Skrill"))
 
-class RoleButton(Button):
-    def __init__(self, label, role):
-        super().__init__(label=label, style=discord.ButtonStyle.primary, custom_id=f"role_{role}")
-        self.role = role
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            f"Vous avez choisi le rôle **{self.role}**. Veuillez sélectionner un utilisateur pour démarrer.",
-            ephemeral=True,
-            view=UserSelectionView(self.role)
-        )
-
-class UserSelectionView(View):
-    def __init__(self, role):
-        super().__init__(timeout=1200)  # 20 minutes
-        self.role = role
-        self.add_item(UserInputModal(role))
-
-class UserInputModal(Button):
-    def __init__(self, role):
-        super().__init__(label="Saisir le montant", style=discord.ButtonStyle.success, custom_id=f"modal_{role}")
-        self.role = role
+class DispositionButton(Button):
+    def __init__(self, label):
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
-        modal = TransactionModal(self.role)
-        await interaction.response.send_modal(modal)
+        await interaction.response.send_message(f"**Offres disponibles pour {self.label} :**\n(Liste dynamique à venir...)", ephemeral=True)
 
-class TransactionModal(Modal, title="Détails de la transaction"):
-    def __init__(self, role):
-        super().__init__()
-        self.role = role
-        self.amount = TextInput(label="Montant en USDT", placeholder="Ex: 100", required=True)
-        self.add_item(self.amount)
+# Dès que le bot démarre
+@bot.event
+async def on_ready():
+    print(f"{bot.user} est en ligne.")
+    channel = discord.utils.get(bot.get_all_channels(), name="p2p")
+    if channel:
+        await channel.send("Bienvenue sur le marché P2P ! Choisissez une disposition :", view=DispositionView())
 
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            f"Transaction lancée par **{interaction.user}** en tant que **{self.role}** pour {self.amount.value} USDT.",
-            ephemeral=False
-        )
-
-@bot.command(name="start")
-async def start(ctx):
-    await ctx.send("Choisissez votre rôle :", view=RoleSelectionView())
+# Commande pour noter un utilisateur
+@bot.command()
+async def noter(ctx, membre: discord.Member, note: int):
+    if note < 1 or note > 5:
+        await ctx.send("Merci de donner une note entre 1 et 5.")
+        return
+    if membre.id not in notes:
+        notes[membre.id] = []
+    notes[membre.id].append(note)
+    moyenne = sum(notes[membre.id]) / len(notes[membre.id])
+    await ctx.send(f"Note ajoutée. Nouvelle moyenne pour {membre.mention} : {round(moyenne, 2)} ⭐")
+    
+    if len(notes[membre.id]) >= 5 and moyenne >= 4:
+        role = discord.utils.get(ctx.guild.roles, name="Vendeur Vérifié")
+        if role:
+            await membre.add_roles(role)
+            await ctx.send(f"{membre.mention} a reçu le rôle **Vendeur Vérifié**.")
 
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
