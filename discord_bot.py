@@ -77,4 +77,5 @@ class BuyModal(Modal, title="Créer une demande d'achat"):
 
 # Exécution du bot
 TOKEN = os.getenv("DISCORD_TOKEN")
+print("Le token est :", TOKEN)
 bot.run(TOKEN)
