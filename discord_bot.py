@@ -6,10 +6,7 @@ import os
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Mémoire temporaire
-notes = {}
-
-# Affichage des 4 dispositions
+# ====== Boutons interactifs ======
 class DispositionView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -23,32 +20,27 @@ class DispositionButton(Button):
         super().__init__(label=label, style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"**Offres disponibles pour {self.label} :**\n(Liste dynamique à venir...)", ephemeral=True)
+        await interaction.response.send_message(
+            f"Voici les offres disponibles pour **{self.label}** (prochainement dynamiques).", ephemeral=True
+        )
 
-# Dès que le bot démarre
+# ====== Quand le bot démarre ======
 @bot.event
 async def on_ready():
     print(f"{bot.user} est en ligne.")
     channel = discord.utils.get(bot.get_all_channels(), name="p2p")
+
     if channel:
-        await channel.send("Bienvenue sur le marché P2P ! Choisissez une disposition :", view=DispositionView())
+        # Supprimer anciens messages du bot pour éviter les doublons
+        async for msg in channel.history(limit=10):
+            if msg.author == bot.user:
+                await msg.delete()
 
-# Commande pour noter un utilisateur
-@bot.command()
-async def noter(ctx, membre: discord.Member, note: int):
-    if note < 1 or note > 5:
-        await ctx.send("Merci de donner une note entre 1 et 5.")
-        return
-    if membre.id not in notes:
-        notes[membre.id] = []
-    notes[membre.id].append(note)
-    moyenne = sum(notes[membre.id]) / len(notes[membre.id])
-    await ctx.send(f"Note ajoutée. Nouvelle moyenne pour {membre.mention} : {round(moyenne, 2)} ⭐")
-    
-    if len(notes[membre.id]) >= 5 and moyenne >= 4:
-        role = discord.utils.get(ctx.guild.roles, name="Vendeur Vérifié")
-        if role:
-            await membre.add_roles(role)
-            await ctx.send(f"{membre.mention} a reçu le rôle **Vendeur Vérifié**.")
+        # Envoyer le menu automatique
+        await channel.send(
+            "**Bienvenue sur le marché P2P CryptoTN !**\nChoisissez une disposition de vente ci-dessous :",
+            view=DispositionView()
+        )
 
+# ====== Démarrage du bot ======
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
