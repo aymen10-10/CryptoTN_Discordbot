@@ -1,24 +1,21 @@
-import discord
-from discord.ui import Modal, TextInput
-from handlers import envoyer_offre_vendeur
-import os
+from discord.ui import Modal, InputText
+from discord import InputTextStyle
 
-VENDEURS_CHANNEL_ID = int(os.getenv("VENDEURS_CHANNEL_ID"))
+class CreateOfferModal(Modal):
+    def __init__(self, offer_type, on_submit_callback):
+        super().__init__(title="Créer une offre")
+        self.offer_type = offer_type
+        self.on_submit_callback = on_submit_callback
 
-class FormulaireVente(Modal, title="Publier une offre de vente"):
-    montant = TextInput(label="Montant en USDT", placeholder="Ex: 100", required=True)
-    prix = TextInput(label="Prix (1 USDT = combien DT)", placeholder="Ex: 3.25", required=True)
-    methode = TextInput(label="Méthode de paiement", placeholder="Ex: D17, Flouci, etc.", required=True)
-    identifiant = TextInput(label="Votre identifiant de paiement", placeholder="Ex: Numéro D17, Flouci, etc.", required=True)
+        self.add_item(InputText(label="Montant (en USDT)", placeholder="Ex: 100"))
+        self.add_item(InputText(label="Prix (1 USDT en DT)", placeholder="Ex: 3.2"))
+        self.add_item(InputText(label="Méthode de paiement", placeholder="Ex: D17, Flouci..."))
+        self.add_item(InputText(label="Identifiant paiement", placeholder="Ex: ton ID Redotpay, etc."))
 
-    async def on_submit(self, interaction: discord.Interaction):
-        await envoyer_offre_vendeur(
-            bot=interaction.client,
-            channel_id=VENDEURS_CHANNEL_ID,
-            vendeur_id=interaction.user.id,
-            montant_usdt=self.montant.value,
-            prix=self.prix.value,
-            methode=self.methode.value,
-            identifiant=self.identifiant.value
-        )
-        await interaction.response.send_message("Votre offre a été publiée avec succès !", ephemeral=True)
+    async def callback(self, interaction):
+        montant = self.children[0].value
+        prix = self.children[1].value
+        methode = self.children[2].value
+        identifiant = self.children[3].value
+
+        await self.on_submit_callback(interaction, self.offer_type, montant, prix, methode, identifiant)
