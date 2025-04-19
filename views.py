@@ -1,6 +1,7 @@
 import discord
-from discord.ui import View, Button
-from actions import show_sellers, show_buyers
+from modals import CreateOfferModal
+from utils import load_database
+from actions import envoyer_offre_vendeur, envoyer_offre_acheteur, start_transaction
 
 class MainMenuView(discord.ui.View):
     def __init__(self):
@@ -10,31 +11,66 @@ class MainMenuView(discord.ui.View):
 
 class SellerButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="Je veux vendre", style=discord.ButtonStyle.success)
+        super().__init__(label="Je veux vendre", style=discord.ButtonStyle.green)
 
     async def callback(self, interaction: discord.Interaction):
-        await show_sellers(interaction)
+        await interaction.response.send_modal(CreateOfferModal("sell"))
 
 class BuyerButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="Je veux acheter", style=discord.ButtonStyle.danger)
+        super().__init__(label="Je veux acheter", style=discord.ButtonStyle.red)
 
     async def callback(self, interaction: discord.Interaction):
-        await show_buyers(interaction)
+        await interaction.response.send_modal(CreateOfferModal("buy"))
+
+class SellerSelectionView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=600)
+        self.populate_sellers()
+
+    def populate_sellers(self):
+        data = load_database()
+        for offer in data.get("sell_offers", []):
+            label = f"{offer['username']} - {offer['amount']} USDT - {offer['price']} DT"
+            self.add_item(SellerSelectButton(label, offer))
+
+class SellerSelectButton(discord.ui.Button):
+    def __init__(self, label, offer):
+        super().__init__(label=label, style=discord.ButtonStyle.blurple)
+        self.offer = offer
+
+    async def callback(self, interaction: discord.Interaction):
+        await envoyer_offre_vendeur(interaction, self.offer)
+
+class BuyerSelectionView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=600)
+        self.populate_buyers()
+
+    def populate_buyers(self):
+        data = load_database()
+        for offer in data.get("buy_offers", []):
+            label = f"{offer['username']} - {offer['amount']} USDT - {offer['price']} DT"
+            self.add_item(BuyerSelectButton(label, offer))
+
+class BuyerSelectButton(discord.ui.Button):
+    def __init__(self, label, offer):
+        super().__init__(label=label, style=discord.ButtonStyle.blurple)
+        self.offer = offer
+
+    async def callback(self, interaction: discord.Interaction):
+        await envoyer_offre_acheteur(interaction, self.offer)
 
 class StartTransactionView(discord.ui.View):
-    def __init__(self, buyer_id, offre):
-        super().__init__(timeout=600)  # 10 minutes
-        self.buyer_id = buyer_id
-        self.offre = offre
-        self.confirmed = False
+    def __init__(self, offer):
+        super().__init__(timeout=600)
+        self.offer = offer
+        self.add_item(StartTransactionButton(offer))
 
-        self.add_item(Button(label="J’ai payé", style=discord.ButtonStyle.primary, custom_id="paiement"))
-        self.add_item(Button(label="Annuler", style=discord.ButtonStyle.danger, custom_id="annuler"))
+class StartTransactionButton(discord.ui.Button):
+    def __init__(self, offer):
+        super().__init__(label="Démarrer la transaction", style=discord.ButtonStyle.success)
+        self.offer = offer
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.buyer_id
-
-    async def on_timeout(self):
-        if not self.confirmed:
-            await self.message.edit(content="**Temps écoulé. La transaction a été annulée automatiquement.**", view=None)
+    async def callback(self, interaction: discord.Interaction):
+        await start_transaction(interaction, self.offer)
