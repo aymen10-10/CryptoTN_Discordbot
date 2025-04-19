@@ -1,7 +1,6 @@
 import discord
 from modals import CreateOfferModal
 from utils import load_database
-from actions import envoyer_offre_vendeur, envoyer_offre_acheteur, start_transaction
 
 class MainMenuView(discord.ui.View):
     def __init__(self):
@@ -40,6 +39,7 @@ class SellerSelectButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
+        from actions import envoyer_offre_vendeur
         await envoyer_offre_vendeur(interaction, self.offer)
 
 class BuyerSelectionView(discord.ui.View):
@@ -59,13 +59,14 @@ class BuyerSelectButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
+        from actions import envoyer_offre_acheteur
         await envoyer_offre_acheteur(interaction, self.offer)
 
 class StartTransactionView(discord.ui.View):
-    def __init__(self, offer):
+    def __init__(self, buyer_id, offre):
         super().__init__(timeout=600)
-        self.offer = offer
-        self.add_item(StartTransactionButton(offer))
+        self.offer = offre
+        self.add_item(StartTransactionButton(offre))
 
 class StartTransactionButton(discord.ui.Button):
     def __init__(self, offer):
@@ -73,4 +74,5 @@ class StartTransactionButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
+        from actions import start_transaction
         await start_transaction(interaction, self.offer)
