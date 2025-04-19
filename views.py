@@ -11,7 +11,7 @@ class SellerButton(discord.ui.Button):
         super().__init__(label="Je veux vendre", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: discord.Interaction):
-        from handlers import show_sellers
+        from actions import show_sellers
         await show_sellers(interaction)
 
 class BuyerButton(discord.ui.Button):
@@ -19,5 +19,5 @@ class BuyerButton(discord.ui.Button):
         super().__init__(label="Je veux acheter", style=discord.ButtonStyle.danger)
 
     async def callback(self, interaction: discord.Interaction):
-        from handlers import show_buyers
+        from actions import show_buyers
         await show_buyers(interaction)
