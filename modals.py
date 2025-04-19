@@ -1,55 +1,51 @@
-import discord
-import json
+from discord.ui import Modal, TextInput, View
 from discord import Interaction
-from utils import save_database
-# Dans ta fonction, par exemple ici :
+from utils import load_database
+from actions import envoyer_offre_vendeur, envoyer_offre_acheteur
 
-async def after_submit_sell(interaction, offer):
-    from views import SellerSelectionView
-    view = SellerSelectionView()
-    await interaction.followup.send("Offre postée !", view=view)
-
-class CreateOfferModal(discord.ui.Modal):
+class CreateOfferModal(Modal):
     def __init__(self, offer_type):
-        title = "Créer une offre de vente" if offer_type == "sell" else "Créer une offre d'achat"
-        super().__init__(title=title)
+        super().__init__(title="Créer une offre")
         self.offer_type = offer_type
+        if offer_type == "sell":
+            self.amount = TextInput(label="Montant en USDT", style=discord.TextStyle.short, required=True)
+            self.price = TextInput(label="Prix en DT", style=discord.TextStyle.short, required=True)
+            self.add_item(self.amount)
+            self.add_item(self.price)
+        elif offer_type == "buy":
+            self.amount = TextInput(label="Montant en USDT", style=discord.TextStyle.short, required=True)
+            self.price = TextInput(label="Prix en DT", style=discord.TextStyle.short, required=True)
+            self.add_item(self.amount)
+            self.add_item(self.price)
 
-        self.add_item(discord.ui.InputText(label="Montant (USDT)", placeholder="Ex: 100"))
-        self.add_item(discord.ui.InputText(label="Prix (DT)", placeholder="Ex: 3.2"))
-        self.add_item(discord.ui.InputText(label="Méthode de paiement", placeholder="Ex: D17, Flouci..."))
+    async def on_submit(self, interaction: Interaction):
+        if self.offer_type == "sell":
+            await self.after_submit_sell(interaction)
+        elif self.offer_type == "buy":
+            await self.after_submit_buy(interaction)
 
-    async def callback(self, interaction: Interaction):
-        username = interaction.user.name
-        amount = self.children[0].value
-        price = self.children[1].value
-        method = self.children[2].value
-
-        new_offer = {
-            "username": username,
-            "amount": amount,
-            "price": price,
-            "methode": method
+    async def after_submit_sell(self, interaction: Interaction):
+        from views import SellerSelectionView  # Import local
+        db = load_database()
+        offer = {
+            "username": interaction.user.name,
+            "amount": self.amount.value,
+            "price": self.price.value,
+            "methode": "D17",  # Ajoute ta méthode ici si nécessaire
         }
+        db["vendeurs"].append(offer)
+        view = SellerSelectionView()  # Crée la vue après avoir posté l'offre
+        await interaction.response.send_message("Offre postée !", view=view, ephemeral=True)
 
-        # Charger les données existantes
-        try:
-            with open("database.json", "r") as f:
-                db = json.load(f)
-        except FileNotFoundError:
-            db = {"sell_offers": [], "buy_offers": []}
-
-        if self.offer_type == "sell":
-            db["sell_offers"].append(new_offer)
-        else:
-            db["buy_offers"].append(new_offer)
-
-        save_database(db)
-
-        # Afficher les offres après ajout
-        if self.offer_type == "sell":
-            view = SellerSelectionView()
-            await interaction.response.send_message("Offre de vente ajoutée :", view=view, ephemeral=True)
-        else:
-            view = BuyerSelectionView()
-            await interaction.response.send_message("Offre d'achat ajoutée :", view=view, ephemeral=True)
+    async def after_submit_buy(self, interaction: Interaction):
+        from views import BuyerSelectionView  # Import local
+        db = load_database()
+        offer = {
+            "username": interaction.user.name,
+            "amount": self.amount.value,
+            "price": self.price.value,
+            "methode": "D17",  # Ajoute ta méthode ici si nécessaire
+        }
+        db["acheteurs"].append(offer)
+        view = BuyerSelectionView()  # Crée la vue après avoir posté l'offre
+        await interaction.response.send_message("Offre postée !", view=view, ephemeral=True)
