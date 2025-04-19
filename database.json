@@ -1,5 +1,8 @@
-
 {
   "vendeurs": [],
-  "acheteurs": []
+  "acheteurs": [],
+  "transactions": [],
+  "utilisateurs": [],
+  "avis": [],
+  "notations": []
 }
