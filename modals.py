@@ -2,7 +2,12 @@ import discord
 import json
 from discord import Interaction
 from utils import save_database
-from views import SellerSelectionView, BuyerSelectionView
+# Dans ta fonction, par exemple ici :
+
+async def after_submit_sell(interaction, offer):
+    from views import SellerSelectionView
+    view = SellerSelectionView()
+    await interaction.followup.send("Offre postée !", view=view)
 
 class CreateOfferModal(discord.ui.Modal):
     def __init__(self, offer_type):
