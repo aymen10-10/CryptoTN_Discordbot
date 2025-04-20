@@ -1,3 +1,4 @@
+from transaction_views import StartTransactionView
 from discord import Interaction
 from views import StartTransactionView
 from utils import load_database
