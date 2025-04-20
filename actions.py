@@ -1,7 +1,7 @@
 import json
 from discord import Interaction
 from utils import load_database
-from views import StartTransactionView
+from transactions_views import StartTransactionView
 
 async def show_sellers(interaction: Interaction):
     db = load_database()
