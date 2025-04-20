@@ -1,6 +1,7 @@
 import discord
 from modals import CreateOfferModal
 from utils import load_database
+from actions import envoyer_offre_vendeur, envoyer_offre_acheteur, start_transaction
 
 class MainMenuView(discord.ui.View):
     def __init__(self):
@@ -29,7 +30,7 @@ class SellerSelectionView(discord.ui.View):
 
     def populate_sellers(self):
         data = load_database()
-        for offer in data.get("sell_offers", []):
+        for offer in data.get("vendeurs", []):
             label = f"{offer['username']} - {offer['amount']} USDT - {offer['price']} DT"
             self.add_item(SellerSelectButton(label, offer))
 
@@ -39,7 +40,6 @@ class SellerSelectButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
-        from actions import envoyer_offre_vendeur
         await envoyer_offre_vendeur(interaction, self.offer)
 
 class BuyerSelectionView(discord.ui.View):
@@ -49,7 +49,7 @@ class BuyerSelectionView(discord.ui.View):
 
     def populate_buyers(self):
         data = load_database()
-        for offer in data.get("buy_offers", []):
+        for offer in data.get("acheteurs", []):
             label = f"{offer['username']} - {offer['amount']} USDT - {offer['price']} DT"
             self.add_item(BuyerSelectButton(label, offer))
 
@@ -59,13 +59,12 @@ class BuyerSelectButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
-        from actions import envoyer_offre_acheteur
         await envoyer_offre_acheteur(interaction, self.offer)
 
 class StartTransactionView(discord.ui.View):
-    def __init__(self, buyer_id, offre):
+    def __init__(self, offre):
         super().__init__(timeout=600)
-        self.offer = offre
+        self.offer = offer
         self.add_item(StartTransactionButton(offre))
 
 class StartTransactionButton(discord.ui.Button):
@@ -74,5 +73,4 @@ class StartTransactionButton(discord.ui.Button):
         self.offer = offer
 
     async def callback(self, interaction: discord.Interaction):
-        from actions import start_transaction
         await start_transaction(interaction, self.offer)
