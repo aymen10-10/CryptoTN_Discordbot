@@ -1,51 +1,43 @@
-from discord.ui import Modal, TextInput, View
-from discord import Interaction
-from utils import load_database
-from actions import envoyer_offre_vendeur, envoyer_offre_acheteur
+import discord
+import json
+from utils import save_database
 
-class CreateOfferModal(Modal):
-    def __init__(self, offer_type):
-        super().__init__(title="Créer une offre")
+class CreateOfferModal(discord.ui.Modal):
+    def __init__(self, offer_type: str):
+        super().__init__(title="Nouvelle offre")
         self.offer_type = offer_type
-        if offer_type == "sell":
-            self.amount = TextInput(label="Montant en USDT", style=discord.TextStyle.short, required=True)
-            self.price = TextInput(label="Prix en DT", style=discord.TextStyle.short, required=True)
-            self.add_item(self.amount)
-            self.add_item(self.price)
-        elif offer_type == "buy":
-            self.amount = TextInput(label="Montant en USDT", style=discord.TextStyle.short, required=True)
-            self.price = TextInput(label="Prix en DT", style=discord.TextStyle.short, required=True)
-            self.add_item(self.amount)
-            self.add_item(self.price)
 
-    async def on_submit(self, interaction: Interaction):
+        self.add_item(discord.ui.InputText(label="Montant en USDT"))
+        self.add_item(discord.ui.InputText(label="Prix (1 USDT = ? DT)"))
+        self.add_item(discord.ui.InputText(label="Méthode de paiement (ex: D17, Flouci, Virement)"))
+        self.add_item(discord.ui.InputText(label="ID RedotPay ou infos de paiement"))
+
+    async def callback(self, interaction: discord.Interaction):
+        montant = self.children[0].value
+        prix = self.children[1].value
+        methode = self.children[2].value
+        identifiant = self.children[3].value
+
+        try:
+            db = {}
+            with open("database.json", "r", encoding="utf-8") as f:
+                db = json.load(f)
+        except FileNotFoundError:
+            db = {"vendeurs": [], "acheteurs": []}
+
+        offre = {
+            "username": str(interaction.user),
+            "amount": montant,
+            "price": prix,
+            "methode": methode,
+            "id_paiement": identifiant
+        }
+
         if self.offer_type == "sell":
-            await self.after_submit_sell(interaction)
-        elif self.offer_type == "buy":
-            await self.after_submit_buy(interaction)
+            db["vendeurs"].append(offre)
+            await interaction.response.send_message("Ton offre de vente a été enregistrée !", ephemeral=True)
+        else:
+            db["acheteurs"].append(offre)
+            await interaction.response.send_message("Ton offre d’achat a été enregistrée !", ephemeral=True)
 
-    async def after_submit_sell(self, interaction: Interaction):
-        from views import SellerSelectionView  # Import local
-        db = load_database()
-        offer = {
-            "username": interaction.user.name,
-            "amount": self.amount.value,
-            "price": self.price.value,
-            "methode": "D17",  # Ajoute ta méthode ici si nécessaire
-        }
-        db["vendeurs"].append(offer)
-        view = SellerSelectionView()  # Crée la vue après avoir posté l'offre
-        await interaction.response.send_message("Offre postée !", view=view, ephemeral=True)
-
-    async def after_submit_buy(self, interaction: Interaction):
-        from views import BuyerSelectionView  # Import local
-        db = load_database()
-        offer = {
-            "username": interaction.user.name,
-            "amount": self.amount.value,
-            "price": self.price.value,
-            "methode": "D17",  # Ajoute ta méthode ici si nécessaire
-        }
-        db["acheteurs"].append(offer)
-        view = BuyerSelectionView()  # Crée la vue après avoir posté l'offre
-        await interaction.response.send_message("Offre postée !", view=view, ephemeral=True)
+        save_database(db)
