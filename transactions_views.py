@@ -1,5 +1,6 @@
 from discord.ui import View, Button
 from discord import ButtonStyle, Interaction
+from discord import ButtonStyle
 
 class StartTransactionView(View):
     def __init__(self, acheteur_id: int, vendeur_id: int, montant: float, method: str):
